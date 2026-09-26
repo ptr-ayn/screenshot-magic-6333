@@ -1,7 +1,7 @@
 import { VIDEO_SERVICE_URL } from "@/config/videoServiceConfig";
 import { toVideoServiceUrl } from "@/utils/videoUrl";
 import { videoWebSocket } from "./videoWebSocket";
-import type { VideoService } from "./contract";
+import type { CameraOption, VideoService } from "./contract";
 import type { Camera, Clip, ClipStatus, CreateClipRequest, EventType, MatchEvent, Period, RealtimeMessage, ServiceStatus } from "@/types/models";
 
 export class VideoServiceError extends Error {
@@ -173,6 +173,18 @@ export const realVideoService: VideoService = {
     rawCameras = parseCameras(await apiRequest("/api/cameras"));
     return buildCameras();
   },
+  async getCameraOptions(name) {
+    const raw = await apiRequest(`/api/cameras/${encodeURIComponent(name)}/options`);
+    const arr = Array.isArray(raw) ? raw : list(raw, "options").length ? list(raw, "options") : list(raw, "formats");
+    const out: CameraOption[] = [];
+    for (const x of arr) {
+      const o = obj(x);
+      const w = num(o["width"]), h = num(o["height"]);
+      const fpsList = Array.isArray(o["fps"]) ? (o["fps"] as unknown[]).map((f) => num(f)) : [num(o["fps"] ?? o["max_fps"], 30)];
+      for (const fps of fpsList) if (w && h && fps) out.push({ width: w, height: h, fps: Math.round(fps) });
+    }
+    return out;
+  },
   async startRecording(opts) {
     const body = opts ?? { camera: rawCameras[0]?.name ?? "", ...captureFormat };
     captureFormat = { width: body.width, height: body.height, fps: body.fps };
@@ -202,15 +214,15 @@ export const realVideoService: VideoService = {
     if (!url) throw new VideoServiceError("Replay generation failed: no playable video was returned.", "INVALID");
     return { mode: "REPLAY", offset: num(o["seconds"], seconds), url };
   },
-  async setReplaySpeed(speed) { await apiRequest("/api/replay/speed", { method: "POST", body: { speed } }); },
-  async goLive() { await apiRequest("/api/replay/live", { method: "POST" }); },
+  async setReplaySpeed(speed) {
+    const o = obj(await apiRequest("/api/replay/speed", { method: "POST", body: { speed }, timeoutMs: 60_000 }));
+    return toVideoServiceUrl(str(o["url"]));
+  },
+  async goLive() { await apiRequest("/api/replay/live", { method: "POST", body: { mode: "live" } }); },
   async createEvent(ev) {
     const res = await apiRequest("/api/events", {
       method: "POST",
-      body: {
-        id: ev.id, type: ev.type, match_id: ev.matchId, camera_id: ev.cameraId, timestamp: ev.timestamp,
-        match_clock: ev.timestamp, period: ev.period, replay_offset: ev.replayOffset, note: ev.note,
-      },
+      body: { type: ev.type, timestamp: ev.timestamp, ...(ev.note ? { note: ev.note } : {}) },
     });
     return mapEvent(res, ev) ?? ev;
   },
@@ -223,7 +235,7 @@ export const realVideoService: VideoService = {
     try {
       const raw = await apiRequest("/api/clips", {
         method: "POST",
-        body: { event_id: req.eventId, seconds: Math.max(1, Math.round(req.endTime - req.startTime)), name: req.name, camera_id: req.cameraId },
+        body: { seconds: Math.max(1, Math.round(req.endTime - req.startTime)), ...(req.name ? { name: req.name } : {}) },
         timeoutMs: 120_000,
       });
       onProgress?.("SAVING", 92);

@@ -1,4 +1,3 @@
-import { VIDEO_SERVICE_DEMO_FALLBACK } from "@/config/videoServiceConfig";
 import type { VideoService } from "./contract";
 import { mockVideoService } from "./mockVideoService";
 import { realVideoService, VideoServiceError } from "./realVideoService";
@@ -6,12 +5,12 @@ import { videoWebSocket } from "./videoWebSocket";
 import type { LinkState, RealtimeMessage } from "@/types/models";
 
 type Mode = "REAL" | "DEMO";
+const DEMO_KEY = "fvs.demoMode";
 
-let mode: Mode = "DEMO";
+let mode: Mode = "REAL";
 let link: LinkState = "CONNECTING";
 let started = false;
 let pollTimer: ReturnType<typeof setInterval> | null = null;
-let probeTimer: ReturnType<typeof setTimeout> | null = null;
 let backendOff: (() => void) | null = null;
 const handlers = new Set<(m: RealtimeMessage) => void>();
 
@@ -32,58 +31,43 @@ function setLink(l: LinkState, m: Mode = mode) {
   emit(linkMsg());
 }
 
+/** GET /api/status once; drives CONNECTED / OFFLINE. */
 async function pollOnce() {
+  if (mode !== "REAL") return;
   try {
     const st = await realVideoService.getStatus();
+    if (mode !== "REAL") return;
     emit({ type: "video_status", data: st });
-    if (videoWebSocket.state === "open" || link !== "REAL") setLink("REAL");
-  } catch { setLink("OFFLINE"); }
+    setLink("REAL");
+  } catch { if (mode === "REAL") setLink("OFFLINE"); }
 }
 
+/** Status is polled every 1s while the WebSocket isn't delivering updates. */
 function startPolling() {
-  if (pollTimer) return;
-  pollTimer = setInterval(pollOnce, 5000);
+  if (pollTimer || mode !== "REAL") return;
+  pollTimer = setInterval(pollOnce, 1000);
 }
 function stopPolling() { if (pollTimer) { clearInterval(pollTimer); pollTimer = null; } }
 
-function onReachable(st: Awaited<ReturnType<VideoService["getStatus"]>>) {
-  if (probeTimer) { clearTimeout(probeTimer); probeTimer = null; }
-  setLink("REAL", "REAL");
-  emit({ type: "video_status", data: st });
-}
-
-async function probe() {
-  try {
-    onReachable(await realVideoService.getStatus());
-  } catch {
-    if (VIDEO_SERVICE_DEMO_FALLBACK) {
-      setLink("DEMO", "DEMO");
-      probeTimer = setTimeout(() => { probeTimer = null; if (mode === "DEMO") void probe(); }, 10_000);
-    } else {
-      setLink("OFFLINE", "REAL");
-      startPolling();
-    }
-  }
-}
-
 videoWebSocket.onState((s) => {
   if (mode !== "REAL") return;
-  if (s === "open") { stopPolling(); setLink("REAL"); }
-  if (s === "closed") { if (link === "REAL") setLink("CONNECTING"); startPolling(); void pollOnce(); }
+  if (s === "open") { stopPolling(); void pollOnce(); }
+  if (s === "closed") { startPolling(); void pollOnce(); }
 });
 
 async function call<T>(fn: (s: VideoService) => Promise<T>): Promise<T> {
   const svc = active();
   try { return await fn(svc); } catch (e) {
-    if (svc === realVideoService && e instanceof VideoServiceError && e.code === "OFFLINE") { setLink("OFFLINE"); startPolling(); }
+    if (svc === realVideoService && e instanceof VideoServiceError && (e.code === "OFFLINE" || e.code === "TIMEOUT")) { setLink("OFFLINE"); startPolling(); }
     throw e;
   }
 }
 
-/** Delegates to the real Windows service (REAL MODE) or the mock (DEMO MODE). */
+/** Delegates to the Windows service, or to the mock only when Demo Mode is explicitly enabled. */
 export const videoService: VideoService = {
   getStatus: () => call((s) => s.getStatus()),
   getCameras: () => call((s) => s.getCameras()),
+  getCameraOptions: (name) => call((s) => s.getCameraOptions(name)),
   startRecording: (o) => call((s) => s.startRecording(o)),
   stopRecording: () => call((s) => s.stopRecording()),
   getLiveStream: (id) => call((s) => s.getLiveStream(id)),
@@ -107,20 +91,30 @@ export const videoService: VideoService = {
 };
 
 export const videoServiceManager = {
-  /** Idempotent: probes the Windows service and picks REAL or DEMO mode. */
+  /** Idempotent: connects to the Windows service (or Demo Mode if the operator enabled it). */
   start() {
     if (started || typeof window === "undefined") return;
     started = true;
-    void probe();
+    if (localStorage.getItem(DEMO_KEY) === "true") { setLink("DEMO", "DEMO"); return; }
+    link = "CONNECTING";
+    emit(linkMsg());
+    startPolling();
+    void pollOnce();
   },
   getMode: () => mode,
   getLink: () => link,
-  /** GET /api/status; switches to REAL MODE on success. */
+  isDemo: () => mode === "DEMO",
+  setDemoMode(on: boolean) {
+    if (typeof window !== "undefined") localStorage.setItem(DEMO_KEY, String(on));
+    if (on) { stopPolling(); videoWebSocket.close(); setLink("DEMO", "DEMO"); return; }
+    setLink("CONNECTING", "REAL");
+    startPolling();
+    void pollOnce();
+  },
   async testConnection(): Promise<{ ok: true } | { ok: false; message: string }> {
     try {
       const st = await realVideoService.getStatus();
-      if (mode !== "REAL") onReachable(st);
-      else { emit({ type: "video_status", data: st }); setLink("REAL"); if (videoWebSocket.state !== "open") videoWebSocket.open(); }
+      if (mode === "REAL") { emit({ type: "video_status", data: st }); setLink("REAL"); if (videoWebSocket.state !== "open") videoWebSocket.open(); }
       return { ok: true };
     } catch (e) {
       if (mode === "REAL") setLink("OFFLINE");

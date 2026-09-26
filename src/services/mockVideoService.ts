@@ -29,11 +29,12 @@ const uid = () => Math.random().toString(36).slice(2, 10);
 export const mockVideoService: VideoService = {
   async getStatus() { return { ...status, cameras: [...status.cameras] }; },
   async getCameras() { return [camera]; },
+  async getCameraOptions() { return [{ width: 1920, height: 1080, fps: 30 }, { width: 1280, height: 720, fps: 60 }, { width: 1280, height: 720, fps: 30 }]; },
   async startRecording() { status.recording = true; camera.state = "RECORDING"; emit({ type: "recording_status", data: { recording: true } }); },
   async stopRecording() { status.recording = false; camera.state = "CONNECTED"; emit({ type: "recording_status", data: { recording: false } }); },
   async getLiveStream(cameraId) { return { cameraId, kind: "mock", url: null }; },
   async getReplay(seconds) { return { mode: "REPLAY", offset: Math.min(seconds, status.bufferSeconds || seconds) }; },
-  async setReplaySpeed() {},
+  async setReplaySpeed() { return null; },
   async goLive() {},
   async createEvent(event) { return event; },
   async getEvents() { return []; },
