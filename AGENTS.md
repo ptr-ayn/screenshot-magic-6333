@@ -1,10 +1,4 @@
-<!-- LOVABLE:BEGIN -->
-> [!IMPORTANT]
-> This project is connected to [Lovable](https://lovable.dev). Avoid rewriting
-> published git history — force pushing, or rebasing/amending/squashing commits
-> that are already pushed — as it rewrites history on Lovable's side and the
-> user will likely lose their project history.
->
-> Commits you push to the connected branch sync back to Lovable and show up in
-> the editor, so keep the branch in a working state.
-<!-- LOVABLE:END -->
+# Architecture rules
+- All video/backend calls go through `src/services/videoService.ts` (VideoService contract); components never call fetch directly — so the mock can be swapped for the local FastAPI+FFmpeg service.
+- Operator state lives in `src/lib/operator-store.ts` (useSyncExternalStore store + actions) — one source of truth, no provider needed.
+- Theme is dark-only; tokens are defined in the override `:root` block at the end of `src/styles.css`.

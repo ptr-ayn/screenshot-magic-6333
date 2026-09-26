@@ -142,3 +142,52 @@
     color: var(--color-foreground);
   }
 }
+
+/* Futsal Video Support — control-room theme (overrides template defaults) */
+:root {
+  --radius: 0.25rem;
+  --background: oklch(0.155 0.008 250);
+  --foreground: oklch(0.95 0.005 250);
+  --card: oklch(0.195 0.01 250);
+  --card-foreground: oklch(0.95 0.005 250);
+  --popover: oklch(0.21 0.01 250);
+  --popover-foreground: oklch(0.95 0.005 250);
+  --primary: oklch(0.8 0.15 78);
+  --primary-foreground: oklch(0.17 0.01 250);
+  --secondary: oklch(0.255 0.012 250);
+  --secondary-foreground: oklch(0.95 0.005 250);
+  --muted: oklch(0.235 0.01 250);
+  --muted-foreground: oklch(0.68 0.015 250);
+  --accent: oklch(0.29 0.014 250);
+  --accent-foreground: oklch(0.97 0.005 250);
+  --destructive: oklch(0.62 0.22 25);
+  --destructive-foreground: oklch(0.98 0 0);
+  --border: oklch(0.3 0.012 250);
+  --input: oklch(0.32 0.012 250);
+  --ring: oklch(0.8 0.15 78);
+  --live: oklch(0.62 0.23 27);
+  --live-foreground: oklch(0.99 0 0);
+  --success: oklch(0.73 0.17 150);
+  --warning: oklch(0.82 0.15 85);
+  --panel: oklch(0.11 0.006 250);
+  --sidebar: oklch(0.13 0.007 250);
+  --sidebar-foreground: oklch(0.9 0.005 250);
+  --sidebar-primary: oklch(0.8 0.15 78);
+  --sidebar-primary-foreground: oklch(0.17 0.01 250);
+  --sidebar-accent: oklch(0.24 0.012 250);
+  --sidebar-accent-foreground: oklch(0.97 0.005 250);
+  --sidebar-border: oklch(0.27 0.012 250);
+  --sidebar-ring: oklch(0.8 0.15 78);
+}
+@theme inline {
+  --color-live: var(--live);
+  --color-live-foreground: var(--live-foreground);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-panel: var(--panel);
+  --font-sans: "Barlow", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Barlow Condensed", "Barlow", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+}
+html { color-scheme: dark; }
+body { font-family: var(--font-sans); }
