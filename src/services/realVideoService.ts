@@ -33,14 +33,14 @@ export async function apiRequest<T = unknown>(path: string, { method = "GET", bo
   let data: unknown = null;
   if (text) {
     try { data = JSON.parse(text); } catch {
-      if (res.ok) throw new VideoServiceError(`Invalid response from video service (${path}).`, "INVALID", res.status);
+      if (res["ok"]) throw new VideoServiceError(`Invalid response from video service (${path}).`, "INVALID", res["status"]);
     }
   }
-  if (!res.ok) {
+  if (!res["ok"]) {
     const d = obj(data);
-    const detail = d.detail ?? d.error ?? d.message;
-    const msg = typeof detail === "string" ? detail : detail ? JSON.stringify(detail) : `HTTP ${res.status}`;
-    throw new VideoServiceError(msg, "HTTP", res.status);
+    const detail = d["detail"] ?? d["error"] ?? d["message"];
+    const msg = typeof detail === "string" ? detail : detail ? JSON.stringify(detail) : `HTTP ${res["status"]}`;
+    throw new VideoServiceError(msg, "HTTP", res["status"]);
   }
   return data as T;
 }
@@ -81,42 +81,42 @@ function buildCameras(): Camera[] {
 function parseCameras(v: unknown): RawCamera[] {
   return list(v, "cameras").map((x, i) => {
     const o = typeof x === "string" ? { name: x } : obj(x);
-    return { id: str(o.id, String(i + 1)), name: str(o.name, `Camera ${i + 1}`), driver: str(o.driver), connected: o.connected !== false };
+    return { id: str(o["id"], String(i + 1)), name: str(o["name"], `Camera ${i + 1}`), driver: str(o["driver"]), connected: o["connected"] !== false };
   });
 }
 
 function applyRecording(r: Rec): Partial<ServiceStatus> {
-  if ("recording" in r) recording = r.recording === true;
-  if ("camera" in r) recordingCamera = r.camera ? str(r.camera) : null;
+  if ("recording" in r) recording = r["recording"] === true;
+  if ("camera" in r) recordingCamera = r["camera"] ? str(r["camera"]) : null;
   const patch: Partial<ServiceStatus> = { recording, cameras: buildCameras() };
-  if ("buffer_seconds" in r) patch.bufferSeconds = Math.round(num(r.buffer_seconds));
-  if ("buffer_target_seconds" in r) patch.bufferCapacity = num(r.buffer_target_seconds, 60);
+  if ("buffer_seconds" in r) patch.bufferSeconds = Math.round(num(r["buffer_seconds"]));
+  if ("buffer_target_seconds" in r) patch.bufferCapacity = num(r["buffer_target_seconds"], 60);
   return patch;
 }
 
 function mapStatus(raw: unknown): Partial<ServiceStatus> {
   const o = obj(raw);
   if (!("recording" in o) && !("service" in o)) throw new VideoServiceError("Invalid status response from video service.", "INVALID");
-  if (list(o.cameras, "cameras").length) rawCameras = parseCameras(o.cameras);
-  const r = o.recording && typeof o.recording === "object" ? obj(o.recording) : { recording: o.recording === true };
-  return { ...applyRecording(r), connected: true, mode: "REAL", version: str(o.version) };
+  if (list(o["cameras"], "cameras").length) rawCameras = parseCameras(o["cameras"]);
+  const r = o["recording"] && typeof o["recording"] === "object" ? obj(o["recording"]) : { recording: o["recording"] === true };
+  return { ...applyRecording(r), connected: true, mode: "REAL", version: str(o["version"]) };
 }
 
 function mapEvent(raw: unknown, fallback?: MatchEvent): MatchEvent | null {
   const o = obj(raw);
-  const type = asEventType(o.type) ?? fallback?.type;
-  const id = str(o.id, fallback?.id ?? "");
+  const type = asEventType(o["type"]) ?? fallback?.type;
+  const id = str(o["id"], fallback?.id ?? "");
   if (!type || !id) return null;
-  const period = str(o.period) as Period;
-  const clipId = str(o.clip_id ?? o.clipId) || fallback?.clipId;
+  const period = str(o["period"]) as Period;
+  const clipId = str(o["clip_id"] ?? o["clipId"]) || fallback?.clipId;
   return {
     id, type,
-    matchId: str(o.match_id ?? o.matchId, fallback?.matchId ?? ""),
-    timestamp: num(o.match_clock ?? o.matchClock, fallback?.timestamp ?? num(o.timestamp)),
+    matchId: str(o["match_id"] ?? o["matchId"], fallback?.matchId ?? ""),
+    timestamp: num(o["match_clock"] ?? o["matchClock"], fallback?.timestamp ?? num(o["timestamp"])),
     period: PERIODS.includes(period) ? period : fallback?.period ?? "1H",
-    cameraId: str(o.camera_id ?? o.cameraId, fallback?.cameraId ?? ""),
-    replayOffset: num(o.replay_offset ?? o.replayOffset, fallback?.replayOffset ?? 15),
-    note: str(o.note, fallback?.note ?? ""),
+    cameraId: str(o["camera_id"] ?? o["cameraId"], fallback?.cameraId ?? ""),
+    replayOffset: num(o["replay_offset"] ?? o["replayOffset"], fallback?.replayOffset ?? 15),
+    note: str(o["note"], fallback?.note ?? ""),
     clipId,
   };
 }
@@ -127,39 +127,39 @@ const CLIP_STATUS: Record<string, ClipStatus> = {
 
 function mapClip(raw: unknown, req?: CreateClipRequest): Clip {
   const o = obj(raw);
-  const seconds = num(o.seconds, req ? req.endTime - req.startTime : 0);
-  const created = o.createdAt ?? o.created_at;
+  const seconds = num(o["seconds"], req ? req.endTime - req.startTime : 0);
+  const created = o["createdAt"] ?? o["created_at"];
   const createdAt = typeof created === "number"
     ? new Date(created < 1e12 ? created * 1000 : created).toISOString()
     : str(created) || new Date().toISOString();
   const start = req?.startTime ?? 0;
   return {
-    id: str(o.id),
-    eventId: str(o.eventId ?? o.event_id) || req?.eventId || null,
-    eventType: asEventType(o.eventType ?? o.event_type) ?? req?.eventType ?? "OTHER",
-    name: str(o.name, req?.name ?? "Clip"),
+    id: str(o["id"]),
+    eventId: str(o["eventId"] ?? o["event_id"]) || req?.eventId || null,
+    eventType: asEventType(o["eventType"] ?? o["event_type"]) ?? req?.eventType ?? "OTHER",
+    name: str(o["name"], req?.name ?? "Clip"),
     startTime: start,
     endTime: start + seconds,
     createdAt,
-    cameraId: str(o.cameraId ?? o.camera_id, req?.cameraId ?? ""),
-    status: CLIP_STATUS[str(o.status, "completed").toLowerCase()] ?? "ENCODING",
-    url: toVideoServiceUrl(str(o.url)) ?? undefined,
+    cameraId: str(o["cameraId"] ?? o["camera_id"], req?.cameraId ?? ""),
+    status: CLIP_STATUS[str(o["status"], "completed").toLowerCase()] ?? "ENCODING",
+    url: toVideoServiceUrl(str(o["url"])) ?? undefined,
   };
 }
 
 function translate(raw: unknown): RealtimeMessage | null {
   const o = obj(raw);
-  const data = obj(o.data);
-  switch (o.type) {
+  const data = obj(o["data"]);
+  switch (o["type"]) {
     case "video_status":
     case "recording_status":
     case "status": {
-      if (list(data.cameras, "cameras").length) rawCameras = parseCameras(data.cameras);
-      const r = data.recording && typeof data.recording === "object" ? obj(data.recording) : data;
+      if (list(data["cameras"], "cameras").length) rawCameras = parseCameras(data["cameras"]);
+      const r = data["recording"] && typeof data["recording"] === "object" ? obj(data["recording"]) : data;
       return { type: "video_status", data: { ...applyRecording(r), connected: true } };
     }
     case "clip_completed": return { type: "clip_completed", data: mapClip(data) };
-    case "error": return { type: "error", data: { message: str(data.message ?? o.message, "Video service error") } };
+    case "error": return { type: "error", data: { message: str(data["message"] ?? o["message"], "Video service error") } };
     default: return null;
   }
 }
@@ -189,8 +189,8 @@ export const realVideoService: VideoService = {
     // V2 has no live stream yet; /api/live is reserved for the future endpoint.
     try {
       const o = obj(await apiRequest(`/api/live?camera=${encodeURIComponent(cameraId)}`, { timeoutMs: 4000 }));
-      const k = str(o.kind);
-      return { cameraId, kind: k === "mjpeg" || k === "webrtc" ? k : "hls", url: toVideoServiceUrl(str(o.url)) };
+      const k = str(o["kind"]);
+      return { cameraId, kind: k === "mjpeg" || k === "webrtc" ? k : "hls", url: toVideoServiceUrl(str(o["url"])) };
     } catch (e) {
       if (e instanceof VideoServiceError && (e.code === "HTTP" || e.code === "INVALID")) return { cameraId, kind: "mock", url: null };
       throw e;
@@ -198,9 +198,9 @@ export const realVideoService: VideoService = {
   },
   async getReplay(seconds) {
     const o = obj(await apiRequest("/api/replay", { method: "POST", body: { seconds }, timeoutMs: 60_000 }));
-    const url = toVideoServiceUrl(str(o.url));
+    const url = toVideoServiceUrl(str(o["url"]));
     if (!url) throw new VideoServiceError("Replay generation failed: no playable video was returned.", "INVALID");
-    return { mode: "REPLAY", offset: num(o.seconds, seconds), url };
+    return { mode: "REPLAY", offset: num(o["seconds"], seconds), url };
   },
   async setReplaySpeed(speed) { await apiRequest("/api/replay/speed", { method: "POST", body: { speed } }); },
   async goLive() { await apiRequest("/api/replay/live", { method: "POST" }); },
