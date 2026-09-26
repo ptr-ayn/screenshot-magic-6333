@@ -6,6 +6,7 @@ const camera: Camera = { id: "cam-1", name: "Camera 1", state: "RECORDING", widt
 const status: ServiceStatus = {
   connected: true,
   mode: "MOCK",
+  link: "DEMO",
   recording: true,
   bufferSeconds: 0,
   bufferCapacity: 60,
@@ -35,6 +36,7 @@ export const mockVideoService: VideoService = {
   async setReplaySpeed() {},
   async goLive() {},
   async createEvent(event) { return event; },
+  async getEvents() { return []; },
   async createClip(req, onProgress) {
     const id = `clip-${uid()}`;
     const stages = [["PREPARING", 15], ["ENCODING", 70], ["SAVING", 92], ["COMPLETED", 100]] as const;

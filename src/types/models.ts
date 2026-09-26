@@ -28,6 +28,7 @@ export interface Camera {
   width: number;
   height: number;
   fps: number;
+  driver?: string | undefined;
 }
 
 export type EventType = "GOAL" | "FOUL" | "OUT" | "CORNER" | "HAND" | "OTHER";
@@ -58,6 +59,8 @@ export interface Clip {
   createdAt: string;
   cameraId: string;
   status: ClipStatus;
+  /** Browser-playable URL (REAL MODE) */
+  url?: string | undefined;
 }
 
 export interface CreateClipRequest {
@@ -77,11 +80,18 @@ export interface ReplayState {
   speed: number;
   /** epoch ms when replay started (client only) */
   startedAt: number | null;
+  /** Playable replay video URL (REAL MODE) */
+  url: string | null;
+  loading: boolean;
 }
+
+export type LinkState = "REAL" | "DEMO" | "CONNECTING" | "OFFLINE";
 
 export interface ServiceStatus {
   connected: boolean;
-  mode: "MOCK" | "LOCAL";
+  mode: "MOCK" | "REAL";
+  link: LinkState;
+  version?: string | undefined;
   recording: boolean;
   bufferSeconds: number;
   bufferCapacity: number;
@@ -119,4 +129,5 @@ export type RealtimeMessage =
   | { type: "replay_status"; data: Partial<ReplayState> }
   | { type: "clip_progress"; data: { clipId: string; stage: ClipStage; progress: number } }
   | { type: "clip_completed"; data: Clip }
-  | { type: "error"; data: { message: string } };
+  | { type: "error"; data: { message: string } }
+  | { type: "link_status"; data: { link: LinkState; mode: "MOCK" | "REAL" } };

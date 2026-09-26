@@ -2,17 +2,20 @@ import type {
   Camera, Clip, ClipStage, CreateClipRequest, LiveStream, MatchEvent, RealtimeMessage, ReplayState, ServiceStatus,
 } from "@/types/models";
 
-/** Contract shared by the mock service and the future local FastAPI + FFmpeg service. */
+/** Contract shared by the mock service (DEMO MODE) and the Windows Video Service V2 adapter (REAL MODE). */
+export interface StartRecordingOptions { camera: string; width: number; height: number; fps: number }
+
 export interface VideoService {
-  getStatus(): Promise<ServiceStatus>;
+  getStatus(): Promise<Partial<ServiceStatus>>;
   getCameras(): Promise<Camera[]>;
-  startRecording(): Promise<void>;
+  startRecording(opts?: StartRecordingOptions): Promise<void>;
   stopRecording(): Promise<void>;
   getLiveStream(cameraId: string): Promise<LiveStream>;
   getReplay(seconds: number): Promise<Partial<ReplayState>>;
   setReplaySpeed(speed: number): Promise<void>;
   goLive(): Promise<void>;
   createEvent(event: MatchEvent): Promise<MatchEvent>;
+  getEvents(): Promise<MatchEvent[]>;
   createClip(req: CreateClipRequest, onProgress?: (stage: ClipStage, progress: number) => void): Promise<Clip>;
   getClips(): Promise<Clip[]>;
   deleteClip(id: string): Promise<void>;
@@ -34,5 +37,5 @@ export const API = {
   createClip: "POST /api/clips",
   clips: "GET /api/clips",
   deleteClip: "DELETE /api/clips/:id",
-  ws: "ws://localhost:8765/ws",
+  /** Reserved for the future live-stream endpoint (not in V2). */
 } as const;
