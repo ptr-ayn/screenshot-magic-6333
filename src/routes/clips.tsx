@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { Download, Film, Pencil, Play, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -28,6 +28,8 @@ const act = "flex h-9 items-center gap-1.5 rounded-sm border border-border px-2.
 
 function ClipList() {
   const clips = useOperator((s) => s.clips);
+  const cameras = useOperator((s) => s.status.cameras);
+  useEffect(() => { actions.refreshClips().catch((e) => toast.error(`Could not load clips: ${e instanceof Error ? e.message : "unknown error"}`)); }, []);
   const [playing, setPlaying] = useState<Clip | null>(null);
   if (!clips.length) return <div className="rounded-sm border border-border bg-card p-10 text-center text-muted-foreground">No clips yet. Press SAVE REPLAY on the Live screen.</div>;
   return (
@@ -45,7 +47,7 @@ function ClipList() {
               <div className="space-y-1 p-3">
                 <div className="truncate font-display text-lg font-bold">{c.name}</div>
                 <div className="flex flex-wrap gap-x-3 font-mono text-xs text-muted-foreground">
-                  <span>@ {fmtClock(c.startTime)}</span><span>Camera 1</span>
+                  <span>@ {fmtClock(c.startTime)}</span><span>{cameras.find((x) => x.id === c.cameraId)?.name ?? (c.cameraId || "Camera")}</span>
                   <span>{new Date(c.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
                   <span className={c.status === "READY" ? "text-success" : "text-warning"}>{c.status}</span>
                 </div>
@@ -63,9 +65,11 @@ function ClipList() {
       <Dialog open={!!playing} onOpenChange={(o) => !o && setPlaying(null)}>
         <DialogContent className="max-w-3xl rounded-sm">
           <DialogHeader><DialogTitle className="font-display text-xl">{playing?.name}</DialogTitle></DialogHeader>
-          <div className="grid aspect-video place-items-center bg-panel text-center text-sm text-muted-foreground">
+          {playing?.url ? (
+            <video key={playing.url} src={playing.url} controls autoPlay playsInline className="aspect-video w-full bg-panel" onError={() => toast.error("Clip video could not be loaded from the video service")} />
+          ) : <div className="grid aspect-video place-items-center bg-panel text-center text-sm text-muted-foreground">
             <div><Film className="mx-auto mb-2 size-10 opacity-40" />Playback is served by the local video service.<br />Demo mode: {playing && fmtClock(playing.endTime - playing.startTime)} clip from {playing && fmtClock(playing.startTime)}.</div>
-          </div>
+          </div>}
         </DialogContent>
       </Dialog>
     </>

@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { fmtClock, useOperator } from "@/lib/operator-store";
+import { actions, fmtClock, useOperator } from "@/lib/operator-store";
 import { PageHeader } from "@/components/operator/AppShell";
 import { EVENT_TYPES, eventMeta } from "@/components/operator/controls";
 import { PERIOD_LABEL, type Period } from "@/types/models";
@@ -26,6 +26,9 @@ function EventsPage() {
 
 function EventLog() {
   const events = useOperator((s) => s.events);
+  const cameras = useOperator((s) => s.status.cameras);
+  useEffect(() => { void actions.loadEvents(); }, []);
+  const camIds = [...new Set([...cameras.map((c) => c.id), ...events.map((e) => e.cameraId).filter(Boolean)])];
   const [type, setType] = useState("ALL");
   const [period, setPeriod] = useState("ALL");
   const [cam, setCam] = useState("ALL");
@@ -37,7 +40,7 @@ function EventLog() {
       <div className="flex flex-wrap gap-2 border-b border-border p-3">
         <select className={sel} value={type} onChange={(e) => setType(e.target.value)}><option value="ALL">All events</option>{EVENT_TYPES.map((t) => <option key={t.type}>{t.type}</option>)}</select>
         <select className={sel} value={period} onChange={(e) => setPeriod(e.target.value)}><option value="ALL">All periods</option>{(Object.keys(PERIOD_LABEL) as Period[]).map((p) => <option key={p} value={p}>{PERIOD_LABEL[p]}</option>)}</select>
-        <select className={sel} value={cam} onChange={(e) => setCam(e.target.value)}><option value="ALL">All cameras</option><option value="cam-1">Camera 1</option></select>
+        <select className={sel} value={cam} onChange={(e) => setCam(e.target.value)}><option value="ALL">All cameras</option>{camIds.map((id) => <option key={id} value={id}>{cameras.find((c) => c.id === id)?.name ?? id}</option>)}</select>
         <span className="ml-auto self-center font-mono text-xs text-muted-foreground">{rows.length} of {events.length}</span>
       </div>
       <table className="w-full text-sm">

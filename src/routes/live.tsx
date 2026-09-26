@@ -55,6 +55,8 @@ function LivePage() {
     return () => window.removeEventListener("keydown", onKey);
   });
 
+  useEffect(() => { void actions.loadEvents(); }, []);
+
   useEffect(() => {
     const onFs = () => { if (!document.fullscreenElement && operatorMode) actions.setOperatorMode(false); };
     document.addEventListener("fullscreenchange", onFs);

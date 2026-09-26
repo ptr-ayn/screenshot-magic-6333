@@ -36,7 +36,7 @@ export function SaveClipDialog({ open, onOpenChange }: { open: boolean; onOpenCh
       );
       toast.success(`Clip saved: ${name}`);
       setTimeout(() => onOpenChange(false), 600);
-    } catch { toast.error("Clip failed — video service unavailable"); setStage(null); }
+    } catch (e) { toast.error(`Clip failed: ${e instanceof Error ? e.message : "video service unavailable"}`); setStage(null); }
   };
 
   const Row = ({ k, v }: { k: string; v: string }) => (

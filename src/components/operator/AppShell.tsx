@@ -2,7 +2,7 @@ import { useEffect, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { Clapperboard, LayoutDashboard, ListOrdered, MonitorPlay, Settings, SquarePen } from "lucide-react";
 import { actions, useOperator } from "@/lib/operator-store";
-import { ConnectionStatus, RecordingStatus } from "./status";
+import { ModeIndicator, RecordingStatus } from "./status";
 
 const NAV = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -15,7 +15,7 @@ const NAV = [
 
 export function AppShell({ children }: { children: ReactNode }) {
   const operatorMode = useOperator((s) => s.operatorMode);
-  const mode = useOperator((s) => s.status.mode);
+  const link = useOperator((s) => s.status.link);
   const match = useOperator((s) => s.match);
   useEffect(() => actions.connectService(), []);
 
@@ -39,10 +39,16 @@ export function AppShell({ children }: { children: ReactNode }) {
         <div className="ml-auto hidden min-w-0 items-center gap-4 xl:flex">
           <span className="truncate text-sm text-muted-foreground">{match.homeTeam} vs {match.awayTeam}</span>
           <RecordingStatus />
-          <ConnectionStatus />
         </div>
-        {mode === "MOCK" && <span className="shrink-0 rounded-sm border border-warning/50 px-1.5 py-0.5 font-mono text-[10px] font-bold tracking-widest text-warning">DEMO MODE</span>}
+        <ModeIndicator />
       </header>
+      {link === "OFFLINE" && (
+        <div className="flex items-center gap-3 border-b border-live/40 bg-live/10 px-3 py-1.5 text-sm">
+          <span className="font-display font-bold tracking-wider text-live">VIDEO SERVICE OFFLINE</span>
+          <span className="text-muted-foreground">The Windows Video Service is not running. Retrying automatically…</span>
+          <button onClick={() => void actions.testConnection()} className="ml-auto rounded-sm border border-border px-3 py-1 text-xs font-bold hover:bg-accent">RETRY</button>
+        </div>
+      )}
       <main className="flex-1">{children}</main>
     </div>
   );
