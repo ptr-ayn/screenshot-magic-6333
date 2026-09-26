@@ -2,9 +2,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Kbd } from "./controls";
 
 const ROWS: [string, string][] = [
-  ["Space", "LIVE"], ["1", "10 second replay"], ["2", "15 second replay"], ["3", "30 second replay"],
-  ["Q", "GOAL"], ["W", "FOUL"], ["E", "OUT"], ["R", "CORNER"], ["T", "HAND"], ["Y", "OTHER"],
-  ["S", "SAVE REPLAY"], ["F", "Operator fullscreen mode"], ["?", "This help"],
+  ["L / Space", "LIVE"], ["1", "10 second replay"], ["2", "15 second replay"], ["3", "30 second replay"],
+  ["Q", "0.75x speed"], ["W", "0.50x speed"], ["E", "0.25x speed"], ["R", "1x speed"],
+  ["G", "GOAL"], ["F", "FOUL"], ["O", "OUT"], ["C", "CORNER"],
+  ["S", "SAVE CLIP"], ["?", "This help"],
 ];
 
 export function KeyboardShortcutHelp({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {

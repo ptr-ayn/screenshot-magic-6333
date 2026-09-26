@@ -3,16 +3,19 @@ import type {
 } from "@/types/models";
 
 /** Contract shared by the mock service (DEMO MODE) and the Windows Video Service V2 adapter (REAL MODE). */
+export interface CameraOption { width: number; height: number; fps: number }
 export interface StartRecordingOptions { camera: string; width: number; height: number; fps: number }
 
 export interface VideoService {
   getStatus(): Promise<Partial<ServiceStatus>>;
   getCameras(): Promise<Camera[]>;
+  getCameraOptions(cameraName: string): Promise<CameraOption[]>;
   startRecording(opts?: StartRecordingOptions): Promise<void>;
   stopRecording(): Promise<void>;
   getLiveStream(cameraId: string): Promise<LiveStream>;
   getReplay(seconds: number): Promise<Partial<ReplayState>>;
-  setReplaySpeed(speed: number): Promise<void>;
+  /** Returns the URL of the speed-adjusted replay, if the service produced one. */
+  setReplaySpeed(speed: number): Promise<string | null>;
   goLive(): Promise<void>;
   createEvent(event: MatchEvent): Promise<MatchEvent>;
   getEvents(): Promise<MatchEvent[]>;
@@ -26,6 +29,7 @@ export interface VideoService {
 export const API = {
   status: "GET /api/status",
   cameras: "GET /api/cameras",
+  cameraOptions: "GET /api/cameras/{camera_name}/options",
   captureStart: "POST /api/capture/start",
   captureStop: "POST /api/capture/stop",
   live: "GET /api/live",

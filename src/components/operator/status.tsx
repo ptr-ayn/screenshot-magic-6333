@@ -56,10 +56,10 @@ export function StorageStatus() {
 }
 
 const LINK = {
-  REAL: { t: "ok", label: "REAL MODE", text: "Video service connected", cls: "border-success/50 text-success" },
-  DEMO: { t: "warn", label: "DEMO MODE", text: "Demo mode — video service not found", cls: "border-warning/50 text-warning" },
-  CONNECTING: { t: "warn", label: "CONNECTING...", text: "Connecting…", cls: "border-warning/50 text-warning" },
-  OFFLINE: { t: "live", label: "SERVICE OFFLINE", text: "Video service offline", cls: "border-live/50 text-live" },
+  REAL: { t: "ok", label: "CONNECTED", text: "Video service connected", cls: "border-success/50 text-success" },
+  DEMO: { t: "warn", label: "DEMO MODE", text: "Demo Mode — mock video service", cls: "border-warning/50 text-warning" },
+  CONNECTING: { t: "warn", label: "CONNECTING", text: "Connecting…", cls: "border-warning/50 text-warning" },
+  OFFLINE: { t: "live", label: "OFFLINE", text: "Video service offline — read-only", cls: "border-live bg-live text-live-foreground" },
 } as const;
 
 export function ConnectionStatus() {
