@@ -1,7 +1,7 @@
 import type { VideoService } from "./contract";
 import type { Camera, Clip, RealtimeMessage, ServiceStatus } from "@/types/models";
 
-const camera: Camera = { id: "cam-1", name: "Camera 1", state: "RECORDING", width: 1920, height: 1080, fps: 60 };
+const camera: Camera = { id: "cam-1", name: "Camera 1", state: "RECORDING", width: 1920, height: 1080, fps: 30 };
 
 const status: ServiceStatus = {
   connected: true,
