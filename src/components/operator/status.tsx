@@ -46,6 +46,7 @@ export function BufferStatus({ bar = true }: { bar?: boolean }) {
 
 export function StorageStatus() {
   const { storageFreeGb: f, storageTotalGb: t } = useOperator((x) => x.status);
+  if (!t) return <div className="text-sm text-muted-foreground">Not reported by video service</div>;
   return (
     <div>
       <div className="font-mono text-sm"><span className="font-bold">{f} GB</span><span className="text-muted-foreground"> available of {t} GB</span></div>
@@ -54,7 +55,21 @@ export function StorageStatus() {
   );
 }
 
+const LINK = {
+  REAL: { t: "ok", label: "REAL MODE", text: "Video service connected", cls: "border-success/50 text-success" },
+  DEMO: { t: "warn", label: "DEMO MODE", text: "Demo mode — video service not found", cls: "border-warning/50 text-warning" },
+  CONNECTING: { t: "warn", label: "CONNECTING...", text: "Connecting…", cls: "border-warning/50 text-warning" },
+  OFFLINE: { t: "live", label: "SERVICE OFFLINE", text: "Video service offline", cls: "border-live/50 text-live" },
+} as const;
+
 export function ConnectionStatus() {
-  const { connected, mode } = useOperator((x) => x.status);
-  return <span className="flex items-center gap-2 whitespace-nowrap text-sm font-semibold"><Dot t={connected ? "ok" : "warn"} pulse={!connected} />{connected ? `Video service connected${mode === "MOCK" ? " (demo)" : ""}` : "Connecting…"}</span>;
+  const link = useOperator((x) => x.status.link);
+  const l = LINK[link];
+  return <span className="flex items-center gap-2 whitespace-nowrap text-sm font-semibold"><Dot t={l.t} pulse={link === "CONNECTING"} />{l.text}</span>;
+}
+
+export function ModeIndicator() {
+  const link = useOperator((x) => x.status.link);
+  const l = LINK[link];
+  return <span className={cn("flex shrink-0 items-center gap-1.5 rounded-sm border px-1.5 py-0.5 font-mono text-[10px] font-bold tracking-widest", l.cls)}><Dot t={l.t} pulse={link === "CONNECTING"} />{l.label}</span>;
 }

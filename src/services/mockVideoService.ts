@@ -1,11 +1,12 @@
 import type { VideoService } from "./contract";
 import type { Camera, Clip, RealtimeMessage, ServiceStatus } from "@/types/models";
 
-const camera: Camera = { id: "cam-1", name: "Camera 1", state: "RECORDING", width: 1920, height: 1080, fps: 60 };
+const camera: Camera = { id: "cam-1", name: "Camera 1", state: "RECORDING", width: 1920, height: 1080, fps: 30 };
 
 const status: ServiceStatus = {
   connected: true,
   mode: "MOCK",
+  link: "DEMO",
   recording: true,
   bufferSeconds: 0,
   bufferCapacity: 60,
@@ -35,6 +36,7 @@ export const mockVideoService: VideoService = {
   async setReplaySpeed() {},
   async goLive() {},
   async createEvent(event) { return event; },
+  async getEvents() { return []; },
   async createClip(req, onProgress) {
     const id = `clip-${uid()}`;
     const stages = [["PREPARING", 15], ["ENCODING", 70], ["SAVING", 92], ["COMPLETED", 100]] as const;
