@@ -56,5 +56,5 @@ export function StorageStatus() {
 
 export function ConnectionStatus() {
   const { connected, mode } = useOperator((x) => x.status);
-  return <span className="flex items-center gap-2 text-sm font-semibold"><Dot t={connected ? "ok" : "warn"} pulse={!connected} />{connected ? `Video service connected${mode === "MOCK" ? " (demo)" : ""}` : "Connecting…"}</span>;
+  return <span className="flex items-center gap-2 whitespace-nowrap text-sm font-semibold"><Dot t={connected ? "ok" : "warn"} pulse={!connected} />{connected ? `Video service connected${mode === "MOCK" ? " (demo)" : ""}` : "Connecting…"}</span>;
 }
