@@ -16,7 +16,7 @@ const camMap: Record<CameraState, { t: keyof typeof tone; label: string }> = {
   ERROR: { t: "live", label: "Camera error" },
 };
 
-export function CameraStatus({ camera, compact }: { camera?: Camera; compact?: boolean }) {
+export function CameraStatus({ camera, compact }: { camera?: Camera | undefined; compact?: boolean }) {
   const st = camera ? camMap[camera.state] : camMap.DISCONNECTED;
   return (
     <div className="flex min-w-0 items-center gap-2">

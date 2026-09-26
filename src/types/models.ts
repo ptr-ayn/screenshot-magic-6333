@@ -43,7 +43,7 @@ export interface MatchEvent {
   /** Seconds of pre-roll to use when replaying / clipping */
   replayOffset: number;
   note: string;
-  clipId?: string;
+  clipId?: string | undefined;
 }
 
 export type ClipStatus = "QUEUED" | "ENCODING" | "READY" | "FAILED";

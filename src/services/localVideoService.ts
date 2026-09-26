@@ -4,11 +4,9 @@ import type { Clip, RealtimeMessage } from "@/types/models";
 /** REST + WebSocket client for the future local Windows service (FastAPI + FFmpeg + DirectShow). */
 export function createLocalVideoService(baseUrl = "http://localhost:8765", wsUrl = "ws://localhost:8765/ws"): VideoService {
   const req = async <T>(method: string, path: string, body?: unknown): Promise<T> => {
-    const res = await fetch(`${baseUrl}${path}`, {
-      method,
-      headers: body ? { "Content-Type": "application/json" } : undefined,
-      body: body ? JSON.stringify(body) : undefined,
-    });
+    const init: RequestInit = { method };
+    if (body) { init.headers = { "Content-Type": "application/json" }; init.body = JSON.stringify(body); }
+    const res = await fetch(`${baseUrl}${path}`, init);
     if (!res.ok) throw new Error(`${method} ${path} failed: ${res.status}`);
     return res.status === 204 ? (undefined as T) : res.json();
   };

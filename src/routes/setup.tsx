@@ -28,7 +28,7 @@ function SetupPage() {
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
-    if (!f.homeTeam.trim() || !f.awayTeam.trim()) return toast.error("Home and away team are required");
+    if (!f.homeTeam.trim() || !f.awayTeam.trim()) { toast.error("Home and away team are required"); return; }
     actions.createMatch(f);
     toast.success("Match created");
     navigate({ to: "/live" });
