@@ -18,6 +18,8 @@ export interface OperatorState {
   status: ServiceStatus;
   live: LiveStream | null;
   operatorMode: boolean;
+  /** Actions with a request in flight (buttons are disabled while true). */
+  busy: Record<string, boolean>;
 }
 
 const initial: OperatorState = {
@@ -46,6 +48,7 @@ const initial: OperatorState = {
   },
   live: null,
   operatorMode: false,
+  busy: {},
 };
 
 let state = initial;
@@ -85,6 +88,20 @@ export function useMatchClock() {
 const uid = () => Math.random().toString(36).slice(2, 10);
 const errMsg = (e: unknown) => (e instanceof Error ? e.message : "Unknown error");
 const isReal = () => state.status.mode === "REAL";
+/** OFFLINE / CONNECTING: UI stays visible but service actions are blocked. */
+export const isReadOnly = (s: OperatorState) => s.status.link === "OFFLINE" || s.status.link === "CONNECTING";
+const setBusy = (k: string, on: boolean) => set((s) => ({ busy: { ...s.busy, [k]: on } }));
+/** Runs fn once at a time per key; blocked while offline. */
+async function guarded<T>(key: string, fn: () => Promise<T>): Promise<T | undefined> {
+  if (state.busy[key]) return undefined;
+  if (isReadOnly(state)) { toast.error("Video service is OFFLINE — read-only mode."); return undefined; }
+  setBusy(key, true);
+  try { return await fn(); } finally { setBusy(key, false); }
+}
+export const useBusy = (key: string) => useOperator((s) => !!s.busy[key]);
+export const useReadOnly = () => useOperator(isReadOnly);
+/** URL of the latest 1x replay, reused when switching back to 1x. */
+let normalReplayUrl: string | null = null;
 
 /** Keep the selected camera valid when the camera list changes. */
 const withCameras = (s: OperatorState, cameras: Camera[]): Partial<OperatorState> => {
@@ -121,7 +138,9 @@ function handleMessage(m: RealtimeMessage) {
     case "error": toast.error(m.data.message); break;
     case "link_status": {
       const { link, mode } = m.data;
+      const was = state.status.link;
       set((s) => ({ status: { ...s.status, link, mode, connected: link === "REAL" || link === "DEMO" } }));
+      if (link === "REAL" && was === "OFFLINE") { void actions.refreshClips().catch(() => {}); void actions.loadEvents(); }
       if (mode !== loadedMode) { loadedMode = mode; void actions.reloadFromService(); }
       break;
     }
@@ -199,27 +218,47 @@ export const actions = {
   setPeriod(period: Period) { set((s) => ({ match: { ...s.match, period } })); },
   async goLive() {
     replayReq++;
-    set({ replay: { mode: "LIVE", offset: 0, speed: state.settings.defaultSpeed, startedAt: null, url: null, loading: false } });
-    await videoService.goLive().catch((e) => { if (isReal()) toast.error(`Return to live failed: ${errMsg(e)}`); });
+    set((s) => ({ replay: { mode: "LIVE", offset: 0, speed: 1, startedAt: null, url: null, loading: false } }));
+    await guarded("live", () => videoService.goLive()).catch((e) => toast.error(`Return to live failed: ${errMsg(e)}`));
   },
   async replay(seconds: number) {
-    const req = ++replayReq;
-    set((s) => ({ replay: { ...s.replay, mode: "REPLAY", offset: seconds, startedAt: Date.now(), url: null, loading: isReal() } }));
-    try {
-      const r = await videoService.getReplay(seconds);
-      if (req !== replayReq) return;
-      set((s) => ({ replay: { ...s.replay, ...r, startedAt: Date.now(), loading: false } }));
-    } catch (e) {
-      if (req !== replayReq) return;
-      toast.error(`Replay failed: ${errMsg(e)}`);
-      set((s) => ({ replay: { ...s.replay, mode: "LIVE", offset: 0, startedAt: null, url: null, loading: false } }));
-    }
+    await guarded("replay", async () => {
+      const req = ++replayReq;
+      set((s) => ({ replay: { ...s.replay, mode: "REPLAY", offset: seconds, speed: 1, startedAt: Date.now(), url: null, loading: isReal() } }));
+      try {
+        const r = await videoService.getReplay(seconds);
+        if (req !== replayReq) return;
+        normalReplayUrl = r.url ?? null;
+        set((s) => ({ replay: { ...s.replay, ...r, speed: 1, startedAt: Date.now(), loading: false } }));
+      } catch (e) {
+        if (req !== replayReq) return;
+        toast.error(`Replay failed: ${errMsg(e)}`);
+        set((s) => ({ replay: { ...s.replay, mode: "LIVE", offset: 0, startedAt: null, url: null, loading: false } }));
+      }
+    });
   },
   async setSpeed(speed: number) {
-    set((s) => ({ replay: { ...s.replay, speed } }));
-    await videoService.setReplaySpeed(speed).catch((e) => { if (isReal()) toast.error(`Speed change failed: ${errMsg(e)}`); });
+    if (speed === 1) {
+      // Back to the latest normal replay without regenerating it.
+      set((s) => ({ replay: { ...s.replay, speed: 1, url: normalReplayUrl ?? s.replay.url, startedAt: s.replay.mode === "REPLAY" ? Date.now() : s.replay.startedAt } }));
+      return;
+    }
+    await guarded("speed", async () => {
+      const req = replayReq;
+      set((s) => ({ replay: { ...s.replay, loading: isReal() && s.replay.mode === "REPLAY" } }));
+      try {
+        const url = await videoService.setReplaySpeed(speed);
+        if (req !== replayReq) return;
+        set((s) => ({ replay: { ...s.replay, speed, url: url ?? s.replay.url, startedAt: url ? Date.now() : s.replay.startedAt, loading: false } }));
+      } catch (e) {
+        set((s) => ({ replay: { ...s.replay, loading: false } }));
+        toast.error(`Speed change failed: ${errMsg(e)}`);
+      }
+    });
   },
   addEvent(type: EventType) {
+    if (isReadOnly(state)) { toast.error("Video service is OFFLINE — read-only mode."); return; }
+    if (state.busy[`event-${type}`]) return;
     const s = state;
     const ev: MatchEvent = {
       id: `ev-${uid()}`, matchId: s.match.id, type, timestamp: clockSeconds(s, Date.now()), period: s.match.period,
@@ -227,23 +266,27 @@ export const actions = {
     };
     set({ events: [...s.events, ev], selectedEventId: ev.id });
     toast.success(`${type} tagged at ${fmtClock(ev.timestamp)}`, { duration: 1500 });
-    videoService.createEvent(ev).then((saved) => {
+    setBusy(`event-${type}`, true);
+    videoService.createEvent(ev).finally(() => setBusy(`event-${type}`, false)).then((saved) => {
       if (!saved.id || saved.id === ev.id) return;
       set((x) => ({
         events: x.events.filter((e) => e.id !== saved.id).map((e) => (e.id === ev.id ? { ...e, id: saved.id } : e)),
         selectedEventId: x.selectedEventId === ev.id ? saved.id : x.selectedEventId,
       }));
-    }).catch((e) => toast.error(`${type} kept locally — not sent to video service: ${errMsg(e)}`));
+    }).catch((e) => toast.error(`${type} not saved on video service: ${errMsg(e)}`));
     return ev;
   },
   selectEvent(id: string | null) { set({ selectedEventId: id }); },
   updateEvent(id: string, patch: Partial<MatchEvent>) { set((s) => ({ events: s.events.map((e) => (e.id === id ? { ...e, ...patch } : e)) })); },
   async saveClip(req: CreateClipRequest, onProgress: (stage: ClipStage, p: number) => void) {
-    const clip = await videoService.createClip(req, onProgress);
+    if (isReadOnly(state)) throw new Error("Video service is OFFLINE — read-only mode.");
+    setBusy("clip", true);
+    const clip = await videoService.createClip(req, onProgress).finally(() => setBusy("clip", false));
     set((s) => ({
       clips: [enrichClip({ ...clip, eventType: req.eventType, startTime: req.startTime, endTime: req.startTime + (clip.endTime - clip.startTime) }, s.events), ...s.clips.filter((c) => c.id !== clip.id)],
       events: s.events.map((e) => (e.id === req.eventId ? { ...e, clipId: clip.id } : e)),
     }));
+    void actions.refreshClips().catch(() => {});
     return clip;
   },
   renameClip(id: string, name: string) { set((s) => ({ clips: s.clips.map((c) => (c.id === id ? { ...c, name } : c)) })); },
@@ -255,7 +298,8 @@ export const actions = {
     toast.success("Clip deleted");
     if (isReal()) await actions.refreshClips().catch(() => {});
   },
-  async setRecording(on: boolean) {
+  async setRecording(on: boolean) { await guarded("recording", () => actions._setRecording(on)); },
+  async _setRecording(on: boolean) {
     const s = state;
     const cam = s.status.cameras.find((c) => c.id === s.settings.cameraId) ?? s.status.cameras[0];
     if (on && !cam) { toast.error("No camera available. Connect a camera and refresh the camera list."); return; }
@@ -273,5 +317,9 @@ export const actions = {
     if (patch.bufferDuration) setMockBufferCapacity(patch.bufferDuration);
     set((s) => ({ settings: { ...s.settings, ...patch } }));
   },
+  async getCameraOptions(name: string) {
+    try { return await videoService.getCameraOptions(name); } catch (e) { toast.error(`Could not load camera options: ${errMsg(e)}`); return []; }
+  },
+  setDemoMode(on: boolean) { videoServiceManager.setDemoMode(on); },
   setOperatorMode(on: boolean) { set({ operatorMode: on }); },
 };
