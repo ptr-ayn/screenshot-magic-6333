@@ -71,7 +71,7 @@ function SettingsPage() {
       <Section title="VIDEO SERVICE">
         <Field label="Status">
           <div className="flex h-11 items-center gap-3">
-            <span className={`font-display text-lg font-bold tracking-wider ${link === "REAL" ? "text-success" : link === "DEMO" || link === "CONNECTING" ? "text-warning" : "text-live"}`}>{link === "REAL" ? "CONNECTED" : link === "CONNECTING" ? "CONNECTING" : "OFFLINE"}</span>
+            <span className={`font-display text-lg font-bold tracking-wider ${link === "REAL" ? "text-success" : link === "DEMO" || link === "CONNECTING" ? "text-warning" : "text-live"}`}>{link === "REAL" ? "CONNECTED" : link === "CONNECTING" ? "CONNECTING" : link === "DEMO" ? "DEMO MODE" : "OFFLINE"}</span>
             <ConnectionStatus />{version && <span className="font-mono text-xs text-muted-foreground">v{version}</span>}
           </div>
         </Field>
@@ -81,6 +81,7 @@ function SettingsPage() {
         <Field label="Video service URL"><input readOnly className={`${inputCls} font-mono text-sm opacity-80`} value={s.serviceUrl} /></Field>
         <Field label="WebSocket URL"><input readOnly className={`${inputCls} font-mono text-sm opacity-80`} value={s.wsUrl} /></Field>
         <div className="space-y-3">
+          <label className="flex items-center justify-between gap-3"><span><span className="font-semibold">Demo Mode</span><span className="block text-xs text-muted-foreground">Use simulated video instead of the Windows Video Service</span></span><Switch checked={link === "DEMO"} onCheckedChange={(v) => actions.setDemoMode(v)} /></label>
           <label className="flex items-center justify-between gap-3"><span className="font-semibold">Auto reconnect</span><Switch checked={s.autoReconnect} onCheckedChange={(v) => u({ autoReconnect: v })} /></label>
           <label className="flex items-center justify-between gap-3"><span className="font-semibold">Start recording automatically</span><Switch checked={s.autoRecord} onCheckedChange={(v) => { u({ autoRecord: v }); }} /></label>
         </div>

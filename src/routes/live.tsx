@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { HelpCircle, Maximize2, Minimize2, Save } from "lucide-react";
-import { actions, useOperator } from "@/lib/operator-store";
+import { actions, useBusy, useOperator, useReadOnly } from "@/lib/operator-store";
 import { LiveVideoPanel, ReplayVideoPanel } from "@/components/operator/video-panels";
 import { EVENT_TYPES, EventButtons, Kbd, MatchTimer, ReplayControls } from "@/components/operator/controls";
 import { EventTimeline } from "@/components/operator/EventTimeline";
@@ -27,6 +27,8 @@ function LivePage() {
   const operatorMode = useOperator((s) => s.operatorMode);
   const match = useOperator((s) => s.match);
   const cam = useOperator((s) => s.status.cameras[0]);
+  const readOnly = useReadOnly();
+  const clipBusy = useBusy("clip");
 
   const toggleOperator = () => {
     const on = !operatorMode;
@@ -39,16 +41,19 @@ function LivePage() {
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement;
       if (t.closest("input, textarea, select, [contenteditable=true]") || e.ctrlKey || e.metaKey || e.altKey) return;
-      if (saveOpen) return;
+      if (saveOpen || helpOpen) return;
       const k = e.key.toUpperCase();
-      if (e.key === " ") { e.preventDefault(); actions.goLive(); return; }
+      if (e.key === " " || k === "L") { e.preventDefault(); actions.goLive(); return; }
+      if (k === "Q") return void actions.setSpeed(0.75);
+      if (k === "W") return void actions.setSpeed(0.5);
+      if (k === "E") return void actions.setSpeed(0.25);
+      if (k === "R") return void actions.setSpeed(1);
       if (k === "1") return void actions.replay(10);
       if (k === "2") return void actions.replay(15);
       if (k === "3") return void actions.replay(30);
-      if (k === "S") { e.preventDefault(); setSaveOpen(true); return; }
-      if (k === "F") return toggleOperator();
+      if (k === "S") { e.preventDefault(); if (!readOnly && !clipBusy) setSaveOpen(true); return; }
       if (e.key === "?") return setHelpOpen(true);
-      const ev = EVENT_TYPES.find((x) => x.key === k);
+      const ev = k && EVENT_TYPES.find((x) => x.key === k);
       if (ev) actions.addEvent(ev.type);
     };
     window.addEventListener("keydown", onKey);
@@ -77,10 +82,11 @@ function LivePage() {
         <div className="flex shrink-0 items-center gap-2">
           <button onClick={() => setHelpOpen(true)} className="flex h-12 items-center gap-2 rounded-sm border border-border px-3 text-sm font-semibold hover:bg-accent" aria-label="Keyboard shortcuts"><HelpCircle className="size-5" /><span className="hidden xl:inline">Shortcuts</span></button>
           <button onClick={toggleOperator} className="flex h-12 items-center gap-2 rounded-sm border border-border px-3 text-sm font-semibold hover:bg-accent">
-            {operatorMode ? <Minimize2 className="size-5" /> : <Maximize2 className="size-5" />}<span className="hidden xl:inline">{operatorMode ? "Exit operator mode" : "Operator mode"}</span><Kbd>F</Kbd>
+            {operatorMode ? <Minimize2 className="size-5" /> : <Maximize2 className="size-5" />}<span className="hidden xl:inline">{operatorMode ? "Exit operator mode" : "Operator mode"}</span>
           </button>
-          <button onClick={() => setSaveOpen(true)} className="flex h-12 items-center gap-2 rounded-sm bg-primary px-5 font-display text-xl font-bold tracking-wider text-primary-foreground hover:bg-primary/90">
-            <Save className="size-5" />SAVE REPLAY<Kbd>S</Kbd>
+          <CameraButton />
+          <button disabled={readOnly || clipBusy} onClick={() => setSaveOpen(true)} className="flex h-12 disabled:opacity-40 items-center gap-2 rounded-sm bg-primary px-5 font-display text-xl font-bold tracking-wider text-primary-foreground hover:bg-primary/90">
+            <Save className="size-5" />SAVE CLIP<Kbd>S</Kbd>
           </button>
         </div>
       </div>
@@ -100,5 +106,17 @@ function LivePage() {
       <SaveClipDialog open={saveOpen} onOpenChange={setSaveOpen} />
       <KeyboardShortcutHelp open={helpOpen} onOpenChange={setHelpOpen} />
     </div>
+  );
+}
+
+function CameraButton() {
+  const recording = useOperator((s) => s.status.recording);
+  const busy = useBusy("recording");
+  const readOnly = useReadOnly();
+  return (
+    <button disabled={readOnly || busy} onClick={() => void actions.setRecording(!recording)}
+      className={`flex h-12 items-center gap-2 rounded-sm border-2 px-3 font-display text-sm font-bold tracking-wider disabled:opacity-40 ${recording ? "border-live text-live hover:bg-live/15" : "border-success text-success hover:bg-success/15"}`}>
+      {busy ? "…" : recording ? "STOP CAMERA" : "START CAMERA"}
+    </button>
   );
 }
