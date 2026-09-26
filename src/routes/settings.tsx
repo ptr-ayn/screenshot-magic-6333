@@ -4,7 +4,7 @@ import { Switch } from "@/components/ui/switch";
 import { actions, useOperator } from "@/lib/operator-store";
 import { PageHeader } from "@/components/operator/AppShell";
 import { ConnectionStatus, StorageStatus } from "@/components/operator/status";
-import { Field, inputCls } from "./setup";
+import { Field, inputCls } from "@/components/operator/Field";
 
 export const Route = createFileRoute("/settings")({
   head: () => ({

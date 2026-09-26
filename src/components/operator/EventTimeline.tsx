@@ -1,6 +1,6 @@
 import { Play } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { actions, fmtClock, getOperator, useMatchClock, useOperator } from "@/lib/operator-store";
+import { actions, fmtClock, useMatchClock, useOperator } from "@/lib/operator-store";
 import { eventMeta } from "./controls";
 
 export function EventTimeline() {
@@ -59,5 +59,3 @@ export function EventTimeline() {
     </div>
   );
 }
-
-export const _getOperator = getOperator;

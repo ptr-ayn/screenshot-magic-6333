@@ -1,4 +1,5 @@
-import { useState, type ReactNode } from "react";
+import { useState, type FormEvent } from "react";
+import { Field, inputCls } from "@/components/operator/Field";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { actions, getOperator } from "@/lib/operator-store";
@@ -17,12 +18,6 @@ export const Route = createFileRoute("/setup")({
   component: SetupPage,
 });
 
-export const inputCls = "h-11 w-full rounded-sm border border-input bg-background px-3 text-base focus:border-primary outline-hidden";
-
-export function Field({ label, children }: { label: string; children: ReactNode }) {
-  return <label className="block"><span className="mb-1 block text-xs font-bold uppercase tracking-wider text-muted-foreground">{label}</span>{children}</label>;
-}
-
 function SetupPage() {
   const navigate = useNavigate();
   const [f, setF] = useState(() => {
@@ -31,7 +26,7 @@ function SetupPage() {
   });
   const bind = (k: keyof typeof f) => ({ value: f[k], onChange: (e: { target: { value: string } }) => setF({ ...f, [k]: e.target.value }) });
 
-  const submit = (e: React.FormEvent) => {
+  const submit = (e: FormEvent) => {
     e.preventDefault();
     if (!f.homeTeam.trim() || !f.awayTeam.trim()) return toast.error("Home and away team are required");
     actions.createMatch(f);
